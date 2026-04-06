@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>ActivityBuddy — Reminder System for Friends</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <style>
+    /* ══ DESIGN: Vibrant glassmorphism — modern SaaS, inviting, public-facing ══ */
+    :root {
+      --bg0:    #07080f;
+      --bg1:    #0d0f1a;
+      --bg2:    #141627;
+      --glass:  rgba(255,255,255,0.04);
+      --glassb: rgba(255,255,255,0.08);
+      --border: rgba(255,255,255,0.08);
+      --borderh:rgba(255,255,255,0.18);
+      --text:   #f0f0ff;
+      --sub:    #8888aa;
+      --muted:  #3a3a55;
+      --cyan:   #00e5ff;
+      --pink:   #ff4dff;
+      --amber:  #ffb300;
+      --green:  #00e676;
+      --red:    #ff1744;
+      --blue:   #448aff;
+      --grad:   linear-gradient(135deg,#00e5ff,#ff4dff);
+      --mono:   'JetBrains Mono',monospace;
+    }
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    html { scroll-behavior:smooth; }
+    body {
+      background:var(--bg0);
+      color:var(--text);
+      font-family:'Outfit',sans-serif;
+      min-height:100vh;
+      overflow-x:hidden;
+    }
+
+    /* animated mesh bg */
+    body::before {
+      content:'';
+      position:fixed; inset:0; z-index:0;
+      background:
+        radial-gradient(ellipse 80% 50% at 20% 20%, rgba(0,229,255,.06) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 70%, rgba(255,77,255,.06) 0%, transparent 60%),
+        radial-gradient(ellipse 40% 60% at 50% 50%, rgba(68,138,255,.04) 0%, transparent 70%);
+      pointer-events:none;
+    }
+
+    /* ── NAVBAR ── */
+    nav {
+      position:sticky; top:0; z-index:100;
+      display:flex; align-items:center; justify-content:space-between;
+      padding:0 40px;
+      height:64px;
+      background:rgba(7,8,15,0.85);
+      backdrop-filter:blur(20px);
+      border-bottom:1px solid var(--border);
+    }
+    .nav-logo {
+      font-size:20px; font-weight:800;
+      background:var(--grad); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+    }
+    .nav-actions { display:flex; gap:10px; align-items:center; }
+    .nav-btn {
+      padding:8px 18px; border-radius:8px; font-size:13px; font-weight:600;
+      font-family:'Outfit',sans-serif; cursor:pointer; border:none; transition:all .2s;
+    }
+    .nav-btn-ghost { background:var(--glass); border:1px solid var(--border); color:var(--sub); }
+    .nav-btn-ghost:hover { border-color:var(--borderh); color:var(--text); }
+    .nav-btn-primary { background:var(--grad); color:#000; }
+    .nav-btn-primary:hover { opacity:.88; }
+    .nav-user { display:none; align-items:center; gap:10px; }
+    .nav-avatar {
+      width:34px; height:34px; border-radius:50%;
+      background:var(--grad); display:flex; align-items:center; justify-content:center;
+      font-size:14px; font-weight:800; color:#000;
+    }
+    .nav-username { font-size:13px; font-weight:600; color:var(--text); }
+    .nav-logout { font-size:12px; color:var(--sub); cursor:pointer; background:none; border:none; font-family:'Outfit',sans-serif; }
+    .nav-logout:hover { color:var(--red); }
+
+    /* ── PAGES ── */
+    .page { display:none; position:relative; z-index:1; }
+    .page.active { display:block; }
+
+    /* ── LANDING ── */
+    .hero {
+      text-align:center;
+      padding:100px 20px 60px;
+      max-width:800px; margin:0 auto;
+    }
+    .hero-badge {
+      display:inline-block;
+      background:rgba(0,229,255,.1); border:1px solid rgba(0,229,255,.25);
+      color:var(--cyan); padding:5px 16px; border-radius:20px;
+      font-size:12px; font-weight:600; letter-spacing:.5px;
+      margin-bottom:24px;
+    }
+    .hero h1 {
+      font-size:clamp(36px,6vw,72px); font-weight:900; line-height:1.1;
+      margin-bottom:20px;
+    }
+    .hero h1 span {
+      background:var(--grad); -webkit-background-clip:text;
+      -webkit-text-fill-color:transparent; background-clip:text;
+    }
+    .hero p { font-size:18px; color:var(--sub); line-height:1.7; margin-bottom:36px; }
+    .hero-ctas { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+    .cta-btn {
+      padding:14px 32px; border-radius:12px; font-size:16px; font-weight:700;
+      font-family:'Outfit',sans-serif; cursor:pointer; border:none; transition:all .2s;
+    }
+    .cta-primary { background:var(--grad); color:#000; }
+    .cta-primary:hover { transform:translateY(-2px); box-shadow:0 8px 30px rgba(0,229,255,.25); }
+    .cta-ghost { background:var(--glass); border:1px solid var(--border); color:var(--text); }
+    .cta-ghost:hover { border-color:var(--borderh); }
+
+    /* features */
+    .features {
+      max-width:1100px; margin:80px auto; padding:0 20px;
+      display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:20px;
+    }
+    .feat-card {
+      background:var(--glass); border:1px solid var(--border);
+      border-radius:16px; padding:28px;
+      transition:border-color .2s, transform .2s;
+    }
+    .feat-card:hover { border-color:var(--borderh); transform:translateY(-3px); }
+    .feat-icon { font-size:32px; margin-bottom:14px; }
+    .feat-title { font-size:17px; font-weight:700; margin-bottom:8px; }
+    .feat-desc { font-size:14px; color:var(--sub); line-height:1.6; }
+
+    /* stats bar */
+    .stats-bar {
+      border-top:1px solid var(--border); border-bottom:1px solid var(--border);
+      padding:40px 20px; text-align:center;
+      display:flex; justify-content:center; gap:60px; flex-wrap:wrap;
+      margin-bottom:80px;
+    }
+    .stat { text-align:center; }
+    .stat-num { font-size:36px; font-weight:900; background:var(--grad); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+    .stat-lbl { font-size:13px; color:var(--sub); margin-top:4px; }
+
+    /* ── AUTH MODAL ── */
+    .modal-overlay {
+      display:none; position:fixed; inset:0; z-index:200;
+      background:rgba(0,0,0,.7); backdrop-filter:blur(8px);
+      align-items:center; justify-content:center; padding:20px;
+    }
+    .modal-overlay.open { display:flex; }
+    .modal {
+      background:var(--bg2); border:1px solid var(--border);
+      border-radius:20px; padding:36px; width:100%; max-width:440px;
+      animation:modalIn .25s ease;
+    }
+    @keyframes modalIn { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:none} }
+    .modal-title { font-size:22px; font-weight:800; margin-bottom:6px; }
+    .modal-sub { font-size:14px; color:var(--sub); margin-bottom:28px; }
+    .modal-close {
+      position:absolute; top:16px; right:20px;
+      background:none; border:none; color:var(--sub); font-size:22px;
+      cursor:pointer; line-height:1;
+    }
+    .modal { position:relative; }
+
+    /* form fields */
+    .field { margin-bottom:18px; }
+    .field label { display:block; font-size:11px; font-weight:700; color:var(--sub); text-transform:uppercase; letter-spacing:.6px; margin-bottom:6px; }
+    .field input, .field select, .field textarea {
+      width:100%; background:#0d0f1a; border:1px solid var(--muted);
+      color:var(--text); padding:11px 14px; border-radius:10px;
+      font-size:14px; font-family:'Outfit',sans-serif; outline:none;
+      transition:border-color .2s, box-shadow .2s;
+    }
+    .field input:focus, .field select:focus, .field textarea:focus {
+      border-color:var(--cyan); box-shadow:0 0 0 3px rgba(0,229,255,.1);
+    }
+    .field select option { background:#0d0f1a; }
+    .field textarea { resize:vertical; min-height:72px; }
+    .field-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+
+    .form-btn {
+      width:100%; padding:13px; border-radius:10px; font-size:15px; font-weight:700;
+      font-family:'Outfit',sans-serif; cursor:pointer; border:none;
+      background:var(--grad); color:#000; transition:opacity .2s;
+      margin-top:6px;
+    }
+    .form-btn:hover { opacity:.88; }
+    .form-switch { text-align:center; margin-top:16px; font-size:13px; color:var(--sub); }
+    .form-switch a { color:var(--cyan); cursor:pointer; font-weight:600; }
+    .form-err { color:var(--red); font-size:12px; margin-top:6px; display:none; }
+
+    /* ── APP (dashboard) ── */
+    .app-wrap { max-width:1100px; margin:0 auto; padding:30px 20px 60px; }
+
+    /* sidebar + main layout */
+    .app-layout { display:grid; grid-template-columns:260px 1fr; gap:24px; }
+    @media(max-width:768px){ .app-layout { grid-template-columns:1fr; } }
+
+    .sidebar {
+      background:var(--glass); border:1px solid var(--border);
+      border-radius:16px; padding:20px; height:fit-content;
+      position:sticky; top:80px;
+    }
+    .sidebar-section { margin-bottom:28px; }
+    .sidebar-label { font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:10px; }
+    .sidebar-nav-item {
+      display:flex; align-items:center; gap:10px;
+      padding:9px 12px; border-radius:8px; font-size:14px; font-weight:500;
+      color:var(--sub); cursor:pointer; transition:all .2s; margin-bottom:2px;
+      background:none; border:none; width:100%; font-family:'Outfit',sans-serif; text-align:left;
+    }
+    .sidebar-nav-item:hover { background:var(--glassb); color:var(--text); }
+    .sidebar-nav-item.active { background:rgba(0,229,255,.1); color:var(--cyan); }
+
+    .friend-list { display:flex; flex-direction:column; gap:8px; }
+    .friend-chip-s {
+      display:flex; align-items:center; gap:8px;
+      padding:8px 10px; background:var(--bg1); border-radius:8px;
+      font-size:12px; color:var(--sub); font-family:var(--mono);
+      border:1px solid var(--border);
+    }
+    .friend-dot { width:7px; height:7px; border-radius:50%; background:var(--green); flex-shrink:0; }
+
+    /* content panels */
+    .panel { display:none; }
+    .panel.active { display:block; }
+    .panel-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:10px; }
+    .panel-title { font-size:22px; font-weight:800; }
+    .panel-btn {
+      padding:9px 20px; border-radius:8px; font-size:13px; font-weight:700;
+      font-family:'Outfit',sans-serif; cursor:pointer; border:none;
+      background:var(--grad); color:#000; transition:opacity .2s;
+    }
+    .panel-btn:hover { opacity:.85; }
+    .panel-btn-ghost {
+      padding:9px 20px; border-radius:8px; font-size:13px; font-weight:700;
+      font-family:'Outfit',sans-serif; cursor:pointer;
+      background:var(--glass); border:1px solid var(--border); color:var(--sub);
+      transition:all .2s;
+    }
+    .panel-btn-ghost:hover { border-color:var(--borderh); color:var(--text); }
+
+    /* activity cards */
+    .cards-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(270px,1fr)); gap:14px; }
+    .act-card {
+      background:var(--glass); border:1px solid var(--border);
+      border-radius:14px; padding:20px;
+      transition:border-color .2s, transform .2s;
+      animation:fadeUp .3s ease;
+    }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:none} }
+    .act-card:hover { border-color:var(--borderh); transform:translateY(-2px); }
+    .act-head { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:8px; }
+    .act-name { font-size:16px; font-weight:700; }
+    .act-desc { font-size:12px; color:var(--sub); line-height:1.5; margin-bottom:12px; }
+    .badges { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px; }
+    .badge {
+      font-size:10px; padding:3px 9px; border-radius:20px;
+      font-weight:700; font-family:var(--mono); letter-spacing:.3px;
+    }
+    .b-freq  { background:rgba(68,138,255,.12); color:var(--blue);  border:1px solid rgba(68,138,255,.2); }
+    .b-due   { background:rgba(0,229,255,.08);  color:var(--cyan);  border:1px solid rgba(0,229,255,.18); }
+    .b-last  { background:rgba(255,23,68,.12);  color:var(--red);   border:1px solid rgba(255,23,68,.25); animation:blink 1.3s infinite; }
+    .b-done  { background:rgba(0,230,118,.1);   color:var(--green); border:1px solid rgba(0,230,118,.2); }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.45} }
+
+    .act-actions { display:flex; gap:6px; flex-wrap:wrap; }
+    .act-btn {
+      font-size:11px; font-weight:700; font-family:'Outfit',sans-serif;
+      border:none; cursor:pointer; padding:6px 12px; border-radius:7px; transition:opacity .2s;
+    }
+    .act-btn:hover { opacity:.75; }
+    .btn-done { background:var(--green); color:#000; }
+    .btn-send { background:var(--pink); color:#fff; }
+    .btn-del  { background:rgba(255,23,68,.12); color:var(--red); border:1px solid rgba(255,23,68,.2); }
+
+    /* progress table */
+    .prog-table { width:100%; border-collapse:collapse; }
+    .prog-table th {
+      text-align:left; padding:10px 14px; font-size:11px; font-weight:700;
+      color:var(--muted); text-transform:uppercase; letter-spacing:.5px;
+      border-bottom:1px solid var(--border);
+    }
+    .prog-table td { padding:12px 14px; font-size:13px; border-bottom:1px solid rgba(255,255,255,.04); }
+    .prog-table tr:hover td { background:var(--glass); }
+    .status-done { color:var(--green); font-weight:700; }
+    .status-pend { color:var(--red); font-weight:700; }
+
+    /* settings card */
+    .settings-card {
+      background:var(--glass); border:1px solid var(--border);
+      border-radius:14px; padding:24px; margin-bottom:20px;
+    }
+    .settings-title { font-size:15px; font-weight:700; margin-bottom:16px; color:var(--cyan); }
+
+    /* emailjs warning box */
+    .ejs-setup {
+      background:rgba(255,179,0,.06); border:1px solid rgba(255,179,0,.2);
+      border-radius:12px; padding:18px 20px; margin-bottom:20px;
+    }
+    .ejs-setup h4 { color:var(--amber); font-size:14px; margin-bottom:10px; }
+    .ejs-setup p, .ejs-setup li { font-size:13px; color:var(--sub); line-height:1.8; }
+    .ejs-setup ol { padding-left:18px; }
+    .ejs-setup code {
+      background:rgba(0,229,255,.1); color:var(--cyan); padding:1px 6px;
+      border-radius:4px; font-family:var(--mono); font-size:12px;
+    }
+    .ejs-table { width:100%; margin-top:10px; border-collapse:collapse; }
+    .ejs-table td { padding:5px 8px; font-size:12px; vertical-align:top; }
+    .ejs-table td:first-child { color:var(--sub); white-space:nowrap; width:140px; }
+
+    /* send tone selector */
+    .tone-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; margin-bottom:20px; }
+    .tone-opt {
+      background:var(--glass); border:2px solid var(--border);
+      border-radius:10px; padding:14px; text-align:center;
+      cursor:pointer; transition:all .2s;
+    }
+    .tone-opt.sel { border-color:var(--cyan); background:rgba(0,229,255,.08); }
+    .tone-opt .t-emoji { font-size:24px; display:block; margin-bottom:6px; }
+    .tone-opt .t-name { font-size:13px; font-weight:700; }
+    .tone-opt .t-desc { font-size:11px; color:var(--sub); margin-top:2px; }
+
+    /* empty state */
+    .empty {
+      text-align:center; padding:60px 20px;
+      background:var(--glass); border:1px dashed var(--border); border-radius:14px;
+    }
+    .empty-icon { font-size:44px; margin-bottom:12px; }
+    .empty p { color:var(--sub); font-size:14px; }
+    .empty .empty-btn {
+      display:inline-block; margin-top:16px;
+      background:var(--grad); color:#000; padding:10px 24px;
+      border-radius:8px; font-weight:700; cursor:pointer;
+      border:none; font-family:'Outfit',sans-serif; font-size:14px;
+    }
+
+    /* ── TOAST ── */
+    #toast {
+      position:fixed; bottom:28px; left:50%; transform:translateX(-50%) translateY(80px);
+      background:var(--bg2); border:1px solid var(--cyan); color:var(--cyan);
+      padding:12px 26px; border-radius:50px; font-size:14px; font-weight:600;
+      z-index:9999; transition:transform .3s, opacity .3s; opacity:0; pointer-events:none;
+      box-shadow:0 0 40px rgba(0,229,255,.15); white-space:nowrap; max-width:90vw;
+    }
+    #toast.show { transform:translateX(-50%) translateY(0); opacity:1; }
+    #toast.err  { border-color:var(--red); color:var(--red); box-shadow:0 0 40px rgba(255,23,68,.15); }
+
+    /* ── SENDING OVERLAY ── */
+    #send-overlay {
+      position:fixed; inset:0; background:rgba(0,0,0,.8); backdrop-filter:blur(6px);
+      display:none; align-items:center; justify-content:center; flex-direction:column;
+      gap:16px; z-index:9998;
+    }
+    #send-overlay.on { display:flex; }
+    .spin { width:44px; height:44px; border:3px solid var(--muted); border-top-color:var(--cyan); border-radius:50%; animation:spin 1s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    #send-overlay p { color:var(--cyan); font-weight:700; font-size:16px; }
+
+    /* diagnostic */
+    .diag-box { display:none; background:#080810; border:1px solid var(--border); border-radius:10px; padding:14px; margin-top:14px; }
+    .diag-box pre { color:var(--cyan); font-family:var(--mono); font-size:12px; white-space:pre-wrap; line-height:1.6; }
+
+    /* responsive nav */
+    @media(max-width:480px) {
+      nav { padding:0 16px; }
+      .hero { padding:70px 16px 40px; }
+      .hero h1 { font-size:34px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══ SENDING OVERLAY ══ -->
+<div id="send-overlay">
+  <div class="spin"></div>
+  <p id="overlay-txt">Sending reminders… 📬</p>
+</div>
+
+<!-- ══ TOAST ══ -->
+<div id="toast"></div>
+
+<!-- ══ AUTH MODAL ══ -->
+<div class="modal-overlay" id="auth-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">×</button>
+
+    <!-- REGISTER -->
+    <div id="auth-register">
+      <div class="modal-title">Create your account 🚀</div>
+      <div class="modal-sub">Free forever. No credit card needed.</div>
+      <div class="field"><label>Your Name</label><input id="r-name" type="text" placeholder="e.g. Ashish"></div>
+      <div class="field"><label>Your Email</label><input id="r-email" type="email" placeholder="you@gmail.com"></div>
+      <div class="field"><label>Friend's Name</label><input id="r-fname" type="text" placeholder="e.g. Mandar"></div>
+      <div class="field"><label>Friend's Email</label><input id="r-femail" type="email" placeholder="friend@gmail.com"></div>
+      <div class="field"><label>Password</label><input id="r-pass" type="password" placeholder="min 6 characters"></div>
+      <div class="form-err" id="r-err"></div>
+      <button class="form-btn" onclick="doRegister()">Create Account & Get Started</button>
+      <div class="form-switch">Already have an account? <a onclick="showLogin()">Sign in</a></div>
+    </div>
+
+    <!-- LOGIN -->
+    <div id="auth-login" style="display:none">
+      <div class="modal-title">Welcome back 👋</div>
+      <div class="modal-sub">Sign in to your ActivityBuddy account.</div>
+      <div class="field"><label>Email</label><input id="l-email" type="email" placeholder="you@gmail.com"></div>
+      <div class="field"><label>Password</label><input id="l-pass" type="password" placeholder="your password"></div>
+      <div class="form-err" id="l-err"></div>
+      <button class="form-btn" onclick="doLogin()">Sign In</button>
+      <div class="form-switch">Don't have an account? <a onclick="showRegister()">Sign up free</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ NAVBAR ══ -->
+<nav>
+  <div class="nav-logo">🎮 ActivityBuddy</div>
+  <div class="nav-actions" id="nav-public">
+    <button class="nav-btn nav-btn-ghost" onclick="openModal('login')">Sign In</button>
+    <button class="nav-btn nav-btn-primary" onclick="openModal('register')">Get Started Free</button>
+  </div>
+  <div class="nav-user" id="nav-user">
+    <div class="nav-avatar" id="nav-avatar">A</div>
+    <span class="nav-username" id="nav-uname">Ashish</span>
+    <button class="nav-logout" onclick="doLogout()">Sign out</button>
+  </div>
+</nav>
+
+<!-- ══════════════════════════
+     PAGE: LANDING
+══════════════════════════ -->
+<div class="page active" id="page-landing">
+
+  <div class="hero">
+    <div class="hero-badge">✨ Free for everyone — No signup fees ever</div>
+    <h1>Keep your friends<br><span>accountable & laughing</span></h1>
+    <p>ActivityBuddy sends funny, motivational, and (sometimes strict) email reminders to you and your friend — automatically, every day. Add any activity. Set a deadline. Never procrastinate again.</p>
+    <div class="hero-ctas">
+      <button class="cta-btn cta-primary" onclick="openModal('register')">🚀 Start Free — Takes 1 min</button>
+      <button class="cta-btn cta-ghost" onclick="openModal('login')">Sign In</button>
+    </div>
+  </div>
+
+  <div class="stats-bar">
+    <div class="stat"><div class="stat-num" id="stat-users">0</div><div class="stat-lbl">Friends Using It</div></div>
+    <div class="stat"><div class="stat-num" id="stat-acts">0</div><div class="stat-lbl">Activities Tracked</div></div>
+    <div class="stat"><div class="stat-num" id="stat-done">0</div><div class="stat-lbl">Completions Logged</div></div>
+  </div>
+
+  <div class="features">
+    <div class="feat-card">
+      <div class="feat-icon">😂</div>
+      <div class="feat-title">Hilarious Reminders</div>
+      <div class="feat-desc">32+ funny, motivational, and strict messages. "Error 404: Motivation not found. Please restart Coding Practice."</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">👫</div>
+      <div class="feat-title">Built for Pairs</div>
+      <div class="feat-desc">Add your friend's email once — both of you get every reminder. Accountability works best together.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">⏰</div>
+      <div class="feat-title">Auto Deadlines</div>
+      <div class="feat-desc">Set a deadline and we track it. Last day? You get an extra-urgent LAST DAY ALERT 🚨</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">📊</div>
+      <div class="feat-title">Progress Tracking</div>
+      <div class="feat-desc">Mark activities as done daily. See your completion history. Know exactly how consistent you are.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🔒</div>
+      <div class="feat-title">Zero Server Cost</div>
+      <div class="feat-desc">Everything runs in your browser. Data saved locally. Uses EmailJS free tier — 200 emails/month free.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🎨</div>
+      <div class="feat-title">Any Activity</div>
+      <div class="feat-desc">Coding, gym, reading, hackathons, workshops, side projects — track anything you want to be consistent at.</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════
+     PAGE: APP (Dashboard)
+══════════════════════════ -->
+<div class="page" id="page-app">
+  <div class="app-wrap">
+    <div class="app-layout">
+
+      <!-- ── SIDEBAR ── -->
+      <aside class="sidebar">
+        <div class="sidebar-section">
+          <div class="sidebar-label">Menu</div>
+          <button class="sidebar-nav-item active" onclick="showPanel('activities',this)">📋 Activities</button>
+          <button class="sidebar-nav-item" onclick="showPanel('add',this)">➕ Add Activity</button>
+          <button class="sidebar-nav-item" onclick="showPanel('progress',this)">📊 Progress</button>
+          <button class="sidebar-nav-item" onclick="showPanel('send',this)">📧 Send Reminder</button>
+          <button class="sidebar-nav-item" onclick="showPanel('settings',this)">⚙️ Settings</button>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-label">Your Buddy Pair</div>
+          <div class="friend-list" id="friend-list-sidebar"></div>
+        </div>
+      </aside>
+
+      <!-- ── MAIN ── -->
+      <main>
+
+        <!-- ACTIVITIES -->
+        <div class="panel active" id="panel-activities">
+          <div class="panel-header">
+            <div class="panel-title">📋 Activities</div>
+            <div style="display:flex;gap:8px">
+              <button class="panel-btn-ghost" onclick="showPanel('send', document.querySelector('.sidebar-nav-item:nth-child(4))'))">📧 Send Now</button>
+              <button class="panel-btn" onclick="showPanel('add',null)">+ Add New</button>
+            </div>
+          </div>
+          <div id="act-grid" class="cards-grid"></div>
+          <div id="act-empty" class="empty" style="display:none">
+            <div class="empty-icon">😴</div>
+            <p>No activities yet. Add one and start crushing it!</p>
+            <button class="empty-btn" onclick="showPanel('add',null)">➕ Add First Activity</button>
+          </div>
+        </div>
+
+        <!-- ADD -->
+        <div class="panel" id="panel-add">
+          <div class="panel-header"><div class="panel-title">➕ Add New Activity</div></div>
+          <div class="settings-card">
+            <div class="field"><label>Activity Name *</label><input id="a-name" type="text" placeholder="e.g. Coding Practice, Hackathon, Gym…"></div>
+            <div class="field"><label>Description (optional)</label><textarea id="a-desc" placeholder="What is this activity about?"></textarea></div>
+            <div class="field">
+              <label>Frequency</label>
+              <div style="display:flex;gap:10px">
+                <div class="tone-opt sel" id="freq-d" onclick="pickFreq('daily')" style="flex:1;padding:12px">
+                  <span class="t-emoji">📅</span><span class="t-name">Daily</span>
+                </div>
+                <div class="tone-opt" id="freq-w" onclick="pickFreq('weekly')" style="flex:1;padding:12px">
+                  <span class="t-emoji">📆</span><span class="t-name">Weekly</span>
+                </div>
+              </div>
+            </div>
+            <div class="field"><label>Deadline *</label><input id="a-dead" type="date"></div>
+            <button class="form-btn" onclick="addActivity()">🚀 Add Activity</button>
+          </div>
+        </div>
+
+        <!-- PROGRESS -->
+        <div class="panel" id="panel-progress">
+          <div class="panel-header"><div class="panel-title">📊 Progress Log</div></div>
+          <div class="settings-card" style="overflow-x:auto">
+            <table class="prog-table">
+              <thead><tr><th>Activity</th><th>Date</th><th>Frequency</th><th>Status</th></tr></thead>
+              <tbody id="prog-tbody"></tbody>
+            </table>
+            <div id="prog-empty" class="empty" style="display:none;border:none;padding:30px 0">
+              <div class="empty-icon">📭</div><p>No progress yet. Complete some activities first!</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- SEND -->
+        <div class="panel" id="panel-send">
+          <div class="panel-header"><div class="panel-title">📧 Send Reminder</div></div>
+
+          <!-- EmailJS setup reminder -->
+          <div class="ejs-setup" id="ejs-warning">
+            <h4>⚠️ EmailJS Setup Required (one-time, free)</h4>
+            <ol>
+              <li>Sign up at <a href="https://emailjs.com" target="_blank" style="color:var(--cyan)">emailjs.com</a> → free, no credit card</li>
+              <li>Add Email Service → Gmail → Connect (OAuth, no password given)</li>
+              <li>Create Email Template — set fields exactly as below:</li>
+            </ol>
+            <table class="ejs-table">
+              <tr><td>To Email:</td><td><code>{{to_email}}</code> ← REQUIRED</td></tr>
+              <tr><td>Subject:</td><td><code>{{subject}}</code></td></tr>
+              <tr><td>Body:</td><td><code>{{html_body}}</code> — set Content Type to <strong style="color:var(--amber)">HTML</strong>, Auto Escape <strong style="color:var(--amber)">OFF</strong></td></tr>
+            </table>
+            <ol start="4" style="margin-top:8px"><li>Paste your Public Key, Service ID, Template ID in ⚙️ Settings → EmailJS Config</li></ol>
+          </div>
+
+          <div class="settings-card">
+            <div class="settings-title">Choose Message Tone</div>
+            <div class="tone-grid">
+              <div class="tone-opt sel" onclick="pickTone('funny',this)">
+                <span class="t-emoji">😂</span><span class="t-name">Funny</span>
+                <div class="t-desc">Jokes & sarcasm</div>
+              </div>
+              <div class="tone-opt" onclick="pickTone('motivational',this)">
+                <span class="t-emoji">💪</span><span class="t-name">Motivational</span>
+                <div class="t-desc">Hype & energy</div>
+              </div>
+              <div class="tone-opt" onclick="pickTone('strict',this)">
+                <span class="t-emoji">😤</span><span class="t-name">Strict</span>
+                <div class="t-desc">No excuses</div>
+              </div>
+              <div class="tone-opt" onclick="pickTone('random',this)">
+                <span class="t-emoji">🎲</span><span class="t-name">Random Mix</span>
+                <div class="t-desc">Surprise!</div>
+              </div>
+            </div>
+            <button class="form-btn" onclick="sendAll()">📬 Send to Both Friends Now</button>
+            <div class="diag-box" id="diag-box"><pre id="diag-pre"></pre></div>
+          </div>
+        </div>
+
+        <!-- SETTINGS -->
+        <div class="panel" id="panel-settings">
+          <div class="panel-header"><div class="panel-title">⚙️ Settings</div></div>
+
+          <div class="settings-card">
+            <div class="settings-title">👤 Your Profile</div>
+            <div class="field-row">
+              <div class="field"><label>Your Name</label><input id="s-myname" type="text"></div>
+              <div class="field"><label>Your Email</label><input id="s-myemail" type="email"></div>
+            </div>
+            <div class="settings-title" style="margin-top:16px">👫 Friend's Info</div>
+            <div class="field-row">
+              <div class="field"><label>Friend's Name</label><input id="s-fname" type="text"></div>
+              <div class="field"><label>Friend's Email</label><input id="s-femail" type="email"></div>
+            </div>
+            <button class="panel-btn" onclick="saveProfile()">Save Profile</button>
+          </div>
+
+          <div class="settings-card">
+            <div class="settings-title">📧 EmailJS Configuration</div>
+            <div class="field-row">
+              <div class="field"><label>Public Key</label><input id="s-pubkey" type="text" placeholder="from Account → API Keys"></div>
+              <div class="field"><label>Service ID</label><input id="s-service" type="text" placeholder="service_xxxxxx"></div>
+            </div>
+            <div class="field"><label>Template ID</label><input id="s-template" type="text" placeholder="template_xxxxxx"></div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <button class="panel-btn" onclick="saveEJS()">💾 Save EmailJS Config</button>
+              <button class="panel-btn-ghost" onclick="testEJS()">🔍 Test Connection</button>
+            </div>
+            <div class="diag-box" id="diag-ejs"><pre id="diag-ejs-pre"></pre></div>
+          </div>
+
+          <div class="settings-card" style="border-color:rgba(255,23,68,.2)">
+            <div class="settings-title" style="color:var(--red)">⚠️ Danger Zone</div>
+            <p style="font-size:13px;color:var(--sub);margin-bottom:14px">Delete all your activities and progress data.</p>
+            <button class="panel-btn-ghost" style="border-color:rgba(255,23,68,.3);color:var(--red)" onclick="clearData()">🗑️ Clear All My Data</button>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   STORAGE HELPERS
+   Each user's data is namespaced by their email
+═══════════════════════════════════════════════════════════ */
+function ns(key) { return 'ab_' + (curUser()?.email || 'guest') + '_' + key; }
+function load(key, def) { try { return JSON.parse(localStorage.getItem(key)) ?? def; } catch { return def; } }
+function save(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+
+/* ═══════════════════════════════════════════════════════════
+   AUTH — stored per-account in localStorage
+   (In production you'd use a real auth backend)
+═══════════════════════════════════════════════════════════ */
+function allAccounts() { return load('ab_accounts', {}); }
+function curUser()     { return load('ab_session', null); }
+
+function doRegister() {
+  const name   = v('r-name'), email = v('r-email').toLowerCase();
+  const fname  = v('r-fname'), femail = v('r-femail').toLowerCase();
+  const pass   = v('r-pass');
+  if (!name||!email||!fname||!femail||!pass) return showErr('r-err','All fields required.');
+  if (pass.length < 6) return showErr('r-err','Password must be at least 6 characters.');
+  if (!email.includes('@')||!femail.includes('@')) return showErr('r-err','Enter valid emails.');
+
+  const accounts = allAccounts();
+  if (accounts[email]) return showErr('r-err','An account with this email already exists. Sign in instead.');
+
+  accounts[email] = { name, email, fname, femail, pass, ejsPub:'', ejsSvc:'', ejsTpl:'' };
+  save('ab_accounts', accounts);
+  save('ab_session', accounts[email]);
+
+  // Update global stats
+  save('ab_stat_users', (load('ab_stat_users',0)+1));
+
+  closeModal();
+  showApp();
+}
+
+function doLogin() {
+  const email = v('l-email').toLowerCase();
+  const pass  = v('l-pass');
+  if (!email||!pass) return showErr('l-err','Enter email and password.');
+  const accounts = allAccounts();
+  const acc = accounts[email];
+  if (!acc) return showErr('l-err','No account found. Sign up first.');
+  if (acc.pass !== pass) return showErr('l-err','Wrong password.');
+  save('ab_session', acc);
+  closeModal();
+  showApp();
+}
+
+function doLogout() {
+  localStorage.removeItem('ab_session');
+  document.getElementById('page-app').classList.remove('active');
+  document.getElementById('page-landing').classList.add('active');
+  document.getElementById('nav-public').style.display='flex';
+  document.getElementById('nav-user').style.display='none';
+  updateStats();
+}
+
+/* ═══════════════════════════════════════════════════════════
+   APP INIT
+═══════════════════════════════════════════════════════════ */
+window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('a-dead').min = today();
+  updateStats();
+  const u = curUser();
+  if (u) showApp();
+});
+
+function showApp() {
+  const u = curUser();
+  document.getElementById('page-landing').classList.remove('active');
+  document.getElementById('page-app').classList.add('active');
+  document.getElementById('nav-public').style.display = 'none';
+  document.getElementById('nav-user').style.display   = 'flex';
+  document.getElementById('nav-avatar').textContent   = u.name[0].toUpperCase();
+  document.getElementById('nav-uname').textContent    = u.name;
+
+  // Load settings into settings panel
+  document.getElementById('s-myname').value  = u.name;
+  document.getElementById('s-myemail').value = u.email;
+  document.getElementById('s-fname').value   = u.fname;
+  document.getElementById('s-femail').value  = u.femail;
+  document.getElementById('s-pubkey').value  = u.ejsPub  || '';
+  document.getElementById('s-service').value = u.ejsSvc  || '';
+  document.getElementById('s-template').value= u.ejsTpl  || '';
+
+  // Sidebar friends
+  document.getElementById('friend-list-sidebar').innerHTML =
+    `<div class="friend-chip-s"><div class="friend-dot"></div>${u.email}</div>
+     <div class="friend-chip-s"><div class="friend-dot" style="background:var(--pink)"></div>${u.femail}</div>`;
+
+  // Show/hide EJS warning
+  document.getElementById('ejs-warning').style.display = u.ejsPub ? 'none' : 'block';
+
+  renderActivities();
+  renderProgress();
+  updateStats();
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ACTIVITIES
+═══════════════════════════════════════════════════════════ */
+let selFreq = 'daily';
+function pickFreq(f) {
+  selFreq = f;
+  document.getElementById('freq-d').classList.toggle('sel', f==='daily');
+  document.getElementById('freq-w').classList.toggle('sel', f==='weekly');
+}
+
+function getActs()  { return load(ns('acts'),  []); }
+function getProgs() { return load(ns('progs'), []); }
+
+function addActivity() {
+  const name = v('a-name'), desc = v('a-desc'), dead = v('a-dead');
+  if (!name) return toast('⚠️ Activity name is required!', true);
+  if (!dead) return toast('⚠️ Deadline is required!', true);
+  if (dead < today()) return toast('⚠️ Deadline must be today or later!', true);
+
+  const acts = getActs();
+  acts.push({ id: Date.now(), name, desc, freq: selFreq, dead, created: today(), doneToday: false, lastDone: '', count: 0 });
+  save(ns('acts'), acts);
+  save('ab_stat_acts', (load('ab_stat_acts',0)+1));
+  renderActivities(); updateStats();
+  toast('🎉 Activity added! Both friends will be reminded.');
+  showPanel('activities', document.querySelector('.sidebar-nav-item'));
+}
+
+function deleteAct(id) {
+  if (!confirm('Delete this activity?')) return;
+  save(ns('acts'),  getActs().filter(a=>a.id!==id));
+  save(ns('progs'), getProgs().filter(p=>p.actId!==id));
+  renderActivities(); renderProgress();
+  toast('🗑️ Activity deleted.');
+}
+
+function markDone(id) {
+  const acts = getActs();
+  const a = acts.find(x=>x.id===id);
+  if (!a) return;
+  if (a.doneToday && a.lastDone===today()) return toast('⚠️ Already marked done today!', true);
+  a.doneToday=true; a.lastDone=today(); a.count=(a.count||0)+1;
+  save(ns('acts'), acts);
+  const progs = getProgs();
+  progs.push({ actId:id, actName:a.name, date:today(), freq:a.freq, done:true });
+  save(ns('progs'), progs);
+  save('ab_stat_done', (load('ab_stat_done',0)+1));
+  renderActivities(); renderProgress(); updateStats();
+  toast('🎉 Marked as done! Keep it up!');
+}
+
+function renderActivities() {
+  const acts = getActs().filter(a => !isPast(a.dead));
+  // reset doneToday if lastDone != today
+  acts.forEach(a => { if (a.lastDone!==today()) a.doneToday=false; });
+
+  const grid  = document.getElementById('act-grid');
+  const empty = document.getElementById('act-empty');
+  if (!acts.length) { grid.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+
+  grid.innerHTML = acts.map(a => {
+    const last = isLastDay(a.dead);
+    const done = a.doneToday && a.lastDone===today();
+    return `<div class="act-card">
+      <div class="act-head">
+        <div class="act-name">${esc(a.name)}</div>
+        ${done?'<span style="font-size:18px">✅</span>':''}
+      </div>
+      ${a.desc?`<div class="act-desc">${esc(a.desc)}</div>`:''}
+      <div class="badges">
+        <span class="badge b-freq">📅 ${a.freq}</span>
+        ${last ? `<span class="badge b-last">🚨 LAST DAY</span>`
+                : `<span class="badge b-due">🗓️ ${a.dead}</span>`}
+        ${done ? `<span class="badge b-done">✅ done today</span>`:''}
+        ${a.count ? `<span class="badge b-freq">🏆 ${a.count}×</span>`:''}
+      </div>
+      <div class="act-actions">
+        <button class="act-btn btn-done" onclick="markDone(${a.id})">✅ Done Today</button>
+        <button class="act-btn btn-send" onclick="sendOne(${a.id})">📧 Remind</button>
+        <button class="act-btn btn-del"  onclick="deleteAct(${a.id})">🗑️</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderProgress() {
+  const progs = getProgs().slice().reverse();
+  const tbody = document.getElementById('prog-tbody');
+  const empty = document.getElementById('prog-empty');
+  if (!progs.length) { tbody.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  tbody.innerHTML = progs.map(p=>`
+    <tr>
+      <td style="font-weight:600">${esc(p.actName)}</td>
+      <td style="font-family:var(--mono);font-size:12px">${p.date}</td>
+      <td><span class="badge b-freq">${p.freq}</span></td>
+      <td>${p.done?'<span class="status-done">✅ Done</span>':'<span class="status-pend">❌ Pending</span>'}</td>
+    </tr>`).join('');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MESSAGES
+═══════════════════════════════════════════════════════════ */
+const MSGS = {
+  funny: [
+    "Hey lazy genius 😴, your **{a}** task is waiting for you!",
+    "Error 404: Motivation not found. Please restart **{a}** 🖥️",
+    "Your future self just texted — PLEASE do **{a}** today 📱",
+    "Coffee ✅ Snacks ✅ **{a}** done? ❌ Fix that NOW.",
+    "Your keyboard misses you 🥺 — **{a}** won't do itself!",
+    "Plot twist: finishing **{a}** today makes you a legend 🦸",
+    "Procrastination called. It wants its trophy back. Do **{a}** 😂",
+    "NASA needs people who finish **{a}**. Are you NASA material? 🚀",
+  ],
+  motivational: [
+    "💪 Champions don't wait for tomorrow. Crush **{a}** TODAY!",
+    "🌟 Every expert was once a beginner. Your **{a}** journey continues now!",
+    "🏆 Success = small efforts repeated. **{a}** is your effort today.",
+    "🔥 The fire in you is bigger than any obstacle. Go do **{a}**!",
+    "🚀 One step closer to your goals — complete **{a}** and level up!",
+    "🎯 Focus. Breathe. Do **{a}**. You've totally got this!",
+    "✨ Believe in yourself! **{a}** is another chance to shine today.",
+    "💡 Great ideas need action. Turn your **{a}** plan into reality!",
+  ],
+  strict: [
+    "⚠️ OFFICIAL WARNING: **{a}** is NOT optional. Do it. NOW.",
+    "🚨 ALERT: **{a}** deadline approaching. No more excuses. Start immediately.",
+    "😤 We've been patient. **{a}** has been waiting. Your move.",
+    "🔴 FINAL NOTICE: **{a}** is pending. Failure = disappointed future self.",
+    "⏰ Time is ticking. **{a}** needs to happen. Today. Not tomorrow.",
+    "📋 Report card: **{a}** — INCOMPLETE. Do something about it NOW.",
+    "🗓️ The deadline for **{a}** doesn't care about your excuses.",
+    "📢 Attention! **{a}** will not complete itself. This is your last warning.",
+  ],
+  last: [
+    "🚨🚨 LAST DAY ALERT! **{a}** deadline is TODAY! ALL HANDS ON DECK!",
+    "⏳ T-MINUS ZERO! **{a}** is due TODAY. Final boss battle — GO!",
+    "🆘 MAYDAY! **{a}** deadline = TODAY. Drop everything. Do it NOW!",
+    "🎺 The deadline trumpet sounds for **{a}**! TODAY IS THE DAY!",
+  ]
+};
+let selTone = 'funny';
+function pickTone(t, el) {
+  selTone = t;
+  document.querySelectorAll('.tone-opt').forEach(o=>o.classList.remove('sel'));
+  if (el) el.classList.add('sel');
+}
+function pick(arr) { return arr[Math.floor(Math.random()*arr.length)]; }
+function getMsg(name, isLast, tone) {
+  let pool;
+  if (isLast) pool = MSGS.last;
+  else if (tone==='random') pool=[...MSGS.funny,...MSGS.motivational,...MSGS.strict];
+  else pool = MSGS[tone]||MSGS.funny;
+  return pick(pool).replace(/{a}/g, name);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   EMAIL
+═══════════════════════════════════════════════════════════ */
+function buildEmail(recipName, items) {
+  const d = new Date().toLocaleDateString('en-IN',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+  // Plain text
+  let plain = `🎮 ACTIVITY BUDDY REMINDER\n${'='.repeat(32)}\nHey ${recipName}! It's ${d}\n\n`;
+  items.forEach((x,i)=>{
+    const m = x.msg.replace(/\*\*(.+?)\*\*/g,'$1');
+    plain += `${i+1}. ${x.name.toUpperCase()}\n   ${m}\n   Frequency: ${x.freq}\n   Deadline: ${x.dead}${x.last?' <-- LAST DAY!':''}\n   Status: ${x.done?'Done today!':'Not done yet'}\n\n`;
+  });
+  plain += `Sent by Activity Buddy\n"Together you grow, together you glow!"`;
+
+  // HTML (table-based for email clients)
+  const rows = items.map(x=>{
+    const bc = x.last?'#c0392b':'#27ae60';
+    const bt = x.last?'LAST DAY!':'Due: '+x.dead;
+    const sc = x.done?'#27ae60':'#e67e22';
+    const st = x.done?'Done today!':'Not done yet';
+    const m  = x.msg.replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');
+    return `<tr><td style="padding:0 0 12px"><table width="100%" cellpadding="0" cellspacing="0" style="border-left:4px solid ${bc};background:#f8f9fa"><tr><td style="padding:14px 16px"><table width="100%" cellpadding="0" cellspacing="0"><tr><td style="font-family:Arial,sans-serif;font-size:15px;font-weight:bold;color:#1a1a2e">&#127919; ${esc(x.name)}</td><td align="right"><span style="background:${bc};color:#fff;padding:2px 8px;border-radius:10px;font-size:11px;font-family:Arial,sans-serif;font-weight:bold">${bt}</span></td></tr></table><p style="font-family:Arial,sans-serif;font-size:13px;color:#444;margin:8px 0 5px">${m}</p><p style="font-family:Arial,sans-serif;font-size:12px;color:${sc};margin:3px 0;font-weight:bold">${st}</p><p style="font-family:Arial,sans-serif;font-size:11px;color:#999;margin:3px 0">Frequency: ${x.freq}</p></td></tr></table></td></tr>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:0;background:#f0f4f8"><table width="100%" cellpadding="0" cellspacing="0" bgcolor="#f0f4f8"><tr><td align="center" style="padding:20px"><table width="580" cellpadding="0" cellspacing="0" style="max-width:580px"><tr><td align="center" bgcolor="#1a1a2e" style="padding:30px 20px;border-radius:10px 10px 0 0"><p style="font-size:40px;margin:0 0 8px">&#127918;</p><h1 style="color:#00d4aa;font-family:Arial,sans-serif;font-size:22px;margin:0">Activity Reminder!</h1><p style="color:#aaa;font-family:Arial,sans-serif;font-size:13px;margin:8px 0 0">Hey <b style="color:#63b3ff">${recipName}</b> &mdash; ${d}</p></td></tr><tr><td bgcolor="#ffffff" style="padding:24px 28px;border-left:1px solid #e0e0e0;border-right:1px solid #e0e0e0"><p style="font-family:Arial,sans-serif;font-size:11px;color:#999;text-transform:uppercase;letter-spacing:1px;font-weight:bold;margin:0 0 12px">Your Pending Activities</p><table width="100%" cellpadding="0" cellspacing="0">${rows}</table></td></tr><tr><td align="center" bgcolor="#1a1a2e" style="padding:16px;border-radius:0 0 10px 10px"><p style="font-family:Arial,sans-serif;color:#666;font-size:11px;margin:0">Sent with &#10084;&#65039; by <b style="color:#00d4aa">Activity Buddy</b> &#129302;<br><i style="color:#555">Together you grow, together you glow!</i></p></td></tr></table></td></tr></table></body></html>`;
+
+  return { html, plain };
+}
+
+async function sendOne(id) {
+  const a = getActs().find(x=>x.id===id);
+  if (!a) return;
+  await doSend(selTone, [a]);
+}
+
+async function sendAll() {
+  const acts = getActs().filter(a=>!isPast(a.dead));
+  if (!acts.length) return toast('⚠️ No active activities to remind about!', true);
+  await doSend(selTone, acts);
+}
+
+async function doSend(tone, actList) {
+  const u = curUser();
+  if (!u?.ejsPub||!u?.ejsSvc||!u?.ejsTpl) {
+    toast('⚠️ Set up EmailJS in ⚙️ Settings first!', true);
+    showPanel('settings', null); return;
+  }
+  emailjs.init(u.ejsPub);
+
+  const FRIENDS = [
+    { name: u.name,  email: u.email  },
+    { name: u.fname, email: u.femail }
+  ];
+
+  showOverlay('Preparing emails…');
+  let ok = 0;
+
+  for (const fr of FRIENDS) {
+    const items = actList.map(a=>({
+      name: a.name, freq: a.freq, dead: a.dead,
+      last: isLastDay(a.dead),
+      done: a.doneToday && a.lastDone===today(),
+      msg:  getMsg(a.name, isLastDay(a.dead), tone)
+    }));
+
+    const lastCnt = items.filter(x=>x.last).length;
+    const pendCnt = items.filter(x=>!x.done).length;
+    const subj = lastCnt>0 ? `🚨 LAST DAY! ${lastCnt} deadline(s) today!`
+               : pendCnt>0 ? `⏰ ${pendCnt} reminder(s) — don't slack off!`
+               : `🎉 All done today! You legends!`;
+
+    const { html, plain } = buildEmail(fr.name, items);
+
+    setOverlay(`Sending to ${fr.name}… 📧`);
+    try {
+      await emailjs.send(u.ejsSvc, u.ejsTpl, {
+        to_email: fr.email, to_name: fr.name,
+        subject: subj, html_body: html,
+        message: plain, body: html,
+        content: html, text: plain, from_name:'Activity Buddy'
+      });
+      ok++;
+    } catch(e) {
+      hideOverlay();
+      const msg = e?.text||e?.message||JSON.stringify(e);
+      showDiag('diag-box','diag-pre','❌ Failed for '+fr.email+':\n'+msg);
+      toast('❌ Error: '+msg, true);
+      return;
+    }
+  }
+
+  hideOverlay();
+  if (ok===FRIENDS.length) toast('📧 Reminders sent to both friends! Check inboxes.');
+  else toast('⚠️ Partially sent. Check EmailJS dashboard.', true);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SETTINGS
+═══════════════════════════════════════════════════════════ */
+function saveProfile() {
+  const accounts = allAccounts();
+  const u = curUser();
+  u.name   = v('s-myname')  || u.name;
+  u.email  = v('s-myemail') || u.email;
+  u.fname  = v('s-fname')   || u.fname;
+  u.femail = v('s-femail')  || u.femail;
+  accounts[u.email] = u;
+  save('ab_accounts', accounts);
+  save('ab_session', u);
+  document.getElementById('nav-uname').textContent   = u.name;
+  document.getElementById('nav-avatar').textContent  = u.name[0].toUpperCase();
+  document.getElementById('friend-list-sidebar').innerHTML =
+    `<div class="friend-chip-s"><div class="friend-dot"></div>${u.email}</div>
+     <div class="friend-chip-s"><div class="friend-dot" style="background:var(--pink)"></div>${u.femail}</div>`;
+  toast('✅ Profile saved!');
+}
+
+function saveEJS() {
+  const accounts = allAccounts();
+  const u = curUser();
+  u.ejsPub = v('s-pubkey'); u.ejsSvc = v('s-service'); u.ejsTpl = v('s-template');
+  accounts[u.email] = u;
+  save('ab_accounts', accounts);
+  save('ab_session', u);
+  document.getElementById('ejs-warning').style.display = u.ejsPub ? 'none' : 'block';
+  toast('✅ EmailJS config saved!');
+}
+
+async function testEJS() {
+  const u = curUser();
+  if (!u?.ejsPub) return toast('⚠️ Save your EmailJS config first!', true);
+  emailjs.init(u.ejsPub);
+  showDiag('diag-ejs','diag-ejs-pre','⏳ Testing…');
+  try {
+    const r = await emailjs.send(u.ejsSvc, u.ejsTpl, {
+      to_email: u.email, to_name: u.name,
+      subject: '🧪 ActivityBuddy Test Email',
+      html_body: '<div style="font-family:Arial;padding:20px;background:#f8f8f8"><h2 style="color:#00d4aa">🎮 Test Successful!</h2><p>Your ActivityBuddy EmailJS setup is working correctly.</p><p style="color:#888">You will now receive properly formatted reminder emails.</p></div>',
+      message: 'Test successful! ActivityBuddy EmailJS is working.',
+      body: 'Test', content: 'Test', text: 'Test', from_name:'Activity Buddy'
+    });
+    showDiag('diag-ejs','diag-ejs-pre',`✅ SUCCESS! Status: ${r.status}\nTest email sent to: ${u.email}\nCheck your inbox!`);
+    toast('✅ Test email sent to ' + u.email);
+  } catch(e) {
+    const msg = e?.text||e?.message||JSON.stringify(e);
+    showDiag('diag-ejs','diag-ejs-pre','❌ FAILED!\n\nError: '+msg+'\n\nFixes:\n• Set To Email = {{to_email}} in template\n• Reconnect Gmail service\n• Verify Public Key from Account → API Keys\n• Set content type to HTML, Auto Escape OFF');
+    toast('❌ Test failed: '+msg, true);
+  }
+}
+
+function clearData() {
+  if (!confirm('Delete ALL your activities and progress? This cannot be undone.')) return;
+  localStorage.removeItem(ns('acts'));
+  localStorage.removeItem(ns('progs'));
+  renderActivities(); renderProgress();
+  toast('🗑️ All data cleared.');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   STATS (shared global counter)
+═══════════════════════════════════════════════════════════ */
+function updateStats() {
+  const users = Object.keys(allAccounts()).length;
+  const acts  = load('ab_stat_acts',0);
+  const done  = load('ab_stat_done',0);
+  animNum('stat-users', users);
+  animNum('stat-acts',  acts);
+  animNum('stat-done',  done);
+}
+function animNum(id, target) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  let cur = 0; const step = Math.ceil(target/30);
+  const t = setInterval(()=>{ cur=Math.min(cur+step,target); el.textContent=cur; if(cur>=target)clearInterval(t); },30);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   UI HELPERS
+═══════════════════════════════════════════════════════════ */
+function v(id) { return document.getElementById(id)?.value?.trim()||''; }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function today(){ return new Date().toISOString().split('T')[0]; }
+function isLastDay(d){ return d===today(); }
+function isPast(d)   { return d<today(); }
+
+function showErr(id, msg){ const e=document.getElementById(id); e.textContent=msg; e.style.display='block'; setTimeout(()=>e.style.display='none',4000); }
+
+function showPanel(name, btn) {
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel-'+name).classList.add('active');
+  document.querySelectorAll('.sidebar-nav-item').forEach(b=>b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  else {
+    document.querySelectorAll('.sidebar-nav-item').forEach(b=>{
+      if(b.getAttribute('onclick')?.includes("'"+name+"'")) b.classList.add('active');
+    });
+  }
+}
+
+function openModal(mode) {
+  document.getElementById('auth-modal').classList.add('open');
+  if (mode==='login') showLogin(); else showRegister();
+}
+function closeModal() { document.getElementById('auth-modal').classList.remove('open'); }
+function showLogin()    { document.getElementById('auth-register').style.display='none'; document.getElementById('auth-login').style.display='block'; }
+function showRegister() { document.getElementById('auth-login').style.display='none'; document.getElementById('auth-register').style.display='block'; }
+
+// close modal on overlay click
+document.getElementById('auth-modal').addEventListener('click', e=>{ if(e.target===e.currentTarget)closeModal(); });
+
+let toastT;
+function toast(msg, err=false) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = 'show'+(err?' err':'');
+  clearTimeout(toastT); toastT=setTimeout(()=>el.className='',3500);
+}
+
+function showOverlay(msg){ document.getElementById('overlay-txt').textContent=msg; document.getElementById('send-overlay').classList.add('on'); }
+function setOverlay(msg) { document.getElementById('overlay-txt').textContent=msg; }
+function hideOverlay()   { document.getElementById('send-overlay').classList.remove('on'); }
+
+function showDiag(boxId, preId, msg){
+  const box=document.getElementById(boxId); box.style.display='block';
+  document.getElementById(preId).textContent=msg;
+}
+</script>
+</body>
+</html>
